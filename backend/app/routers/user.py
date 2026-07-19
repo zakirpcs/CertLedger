@@ -1,3 +1,4 @@
+import re
 import uuid
 import json
 from fastapi import APIRouter, Request, Form, UploadFile, File, Depends, HTTPException
@@ -165,7 +166,12 @@ async def download_cert(tracking_id: str, db: Session = Depends(get_db)):
     if not cert_req or not cert_req.certificate_pem:
         raise HTTPException(status_code=404, detail="Certificate not found or not yet issued")
 
-    filename = f"{cert_req.common_name or tracking_id}.crt"
+    # common_name comes from the (attacker-controlled) CSR subject, so restrict
+    # the download filename to a safe character set to prevent header injection
+    # / Content-Disposition breakout.
+    base = cert_req.common_name or tracking_id
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", base).strip("._") or tracking_id
+    filename = f"{safe}.crt"
     return Response(
         content=cert_req.certificate_pem,
         media_type="application/x-pem-file",

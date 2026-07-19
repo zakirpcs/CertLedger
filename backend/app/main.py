@@ -11,8 +11,34 @@ from .database import Base, engine
 from .routers import user, admin as admin_router
 
 
+_INSECURE_SECRET_KEY = "change-this-in-production-please-use-a-long-random-string"
+_INSECURE_ADMIN_PASSWORDS = {"admin123", "changeme", "password", "admin"}
+
+
+def _verify_secure_config() -> None:
+    """Fail closed if secrets are unset or left at insecure defaults."""
+    problems = []
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key or secret_key == _INSECURE_SECRET_KEY:
+        problems.append("SECRET_KEY is unset or using the insecure default")
+    elif len(secret_key) < 16:
+        problems.append("SECRET_KEY is too short (use a long random string)")
+
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if not admin_password or admin_password.lower() in _INSECURE_ADMIN_PASSWORDS:
+        problems.append("ADMIN_PASSWORD is unset or using an insecure default")
+
+    if problems:
+        raise RuntimeError(
+            "Refusing to start due to insecure configuration: "
+            + "; ".join(problems)
+            + ". Set strong SECRET_KEY and ADMIN_PASSWORD values in your .env."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _verify_secure_config()
     Base.metadata.create_all(bind=engine)
     yield
 

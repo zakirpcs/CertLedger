@@ -149,10 +149,18 @@ Static assets are cache-busted automatically via a `static_v` token (computed fr
 
 ## Security notes
 
-- Serves over HTTPS with a self-signed certificate by default — front it with a real certificate for production use.
-- Admin access is gated by `ADMIN_PASSWORD`; sessions are signed with `SECRET_KEY`.
+Reviewed against the **OWASP Top 10**. Protections in place:
+
+- **HTTPS everywhere** — HTTP is 301-redirected to HTTPS; **HSTS** enforces it. Self-signed by default — front it with a real certificate in production.
+- **Hardened headers** — a restrictive **Content-Security-Policy** (`default-src 'self'`, no external origins, `object-src 'none'`, `frame-ancestors 'self'`), plus `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy`.
+- **Session cookies** are `HttpOnly`, `Secure`, and `SameSite=Lax` (the last mitigates CSRF on state-changing admin actions). Sessions are signed with `SECRET_KEY` and expire after 8 hours.
+- **Login brute-force throttling** — 5 failed attempts per IP within 5 minutes triggers a temporary block; passwords are compared in constant time.
+- **Fail-closed configuration** — the app refuses to start if `SECRET_KEY` or `ADMIN_PASSWORD` is unset or left at an insecure default.
+- **Injection-safe** — all database access is via the SQLAlchemy ORM (parameterized); templates use Jinja2 auto-escaping; download filenames are sanitized to prevent `Content-Disposition` header injection; uploaded CSRs are size-capped and signature-verified.
 - The CA private key and issued-certificate data live in the `ca-data` Docker volume — back it up and protect it accordingly.
 - Deleting a revoked certificate removes its serial from the CRL, which is why deletion is blocked until the certificate has expired.
+
+> Note: the admin panel is a single shared password (no per-user accounts) and issued certificates carry the SANs requested in the CSR — always review request details before signing.
 
 ---
 

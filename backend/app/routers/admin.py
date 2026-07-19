@@ -1,4 +1,5 @@
 import json
+import time
 import datetime
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -25,6 +26,31 @@ REVOCATION_REASONS = [
 ]
 
 
+# --- Login brute-force throttling (in-memory; single uvicorn worker) ---
+_LOGIN_WINDOW = 300      # seconds
+_LOGIN_MAX_FAILS = 5     # failed attempts per window per client IP
+_login_fails: dict[str, list[float]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    # Behind the nginx proxy the real client IP is forwarded; fall back safely.
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _login_rate_limited(ip: str) -> bool:
+    now = time.time()
+    recent = [t for t in _login_fails.get(ip, []) if now - t < _LOGIN_WINDOW]
+    _login_fails[ip] = recent
+    return len(recent) >= _LOGIN_MAX_FAILS
+
+
+def _record_login_failure(ip: str) -> None:
+    _login_fails.setdefault(ip, []).append(time.time())
+
+
 def get_admin(request: Request):
     token = request.cookies.get("session")
     if not token or not verify_session_token(token):
@@ -49,21 +75,34 @@ async def login_page(request: Request):
 
 @router.post("/login", response_class=HTMLResponse)
 async def login(request: Request, password: str = Form(...)):
+    ip = _client_ip(request)
+    if _login_rate_limited(ip):
+        return templates.TemplateResponse("admin/login.html", {
+            "request": request,
+            "error": "Too many failed attempts. Please wait a few minutes and try again.",
+        }, status_code=429)
+
     if check_password(password):
+        _login_fails.pop(ip, None)  # reset on success
         token = create_session_token()
         response = RedirectResponse("/admin/dashboard", status_code=302)
-        response.set_cookie("session", token, httponly=True, samesite="lax", max_age=3600 * 8)
+        response.set_cookie(
+            "session", token,
+            httponly=True, secure=True, samesite="lax", max_age=3600 * 8,
+        )
         return response
+
+    _record_login_failure(ip)
     return templates.TemplateResponse("admin/login.html", {
         "request": request,
         "error": "Invalid password",
-    })
+    }, status_code=401)
 
 
 @router.get("/logout")
 async def logout():
     response = RedirectResponse("/admin/login", status_code=302)
-    response.delete_cookie("session")
+    response.delete_cookie("session", httponly=True, secure=True, samesite="lax")
     return response
 
 
