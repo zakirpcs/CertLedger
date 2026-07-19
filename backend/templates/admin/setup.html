@@ -1,0 +1,64 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}CA Setup{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">CA Setup</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="mb-4">
+      <h3 class="fw-bold mb-1"><i class="bi bi-award-fill text-primary me-2"></i>Initialize Certificate Authority</h3>
+      <p class="text-muted">Set up your root CA. This only needs to be done once. The CA private key will be stored securely in the configured data directory.</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger border-0 shadow-sm">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Setup failed:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">CA Common Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="ca_cn" required
+                   value="Internal Root CA" placeholder="e.g. Acme Corp Internal Root CA">
+            <div class="form-text">This will appear as the issuer name on all certificates.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Organization <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="ca_org" required
+                   value="Internal" placeholder="e.g. Acme Corporation">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Country Code <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="ca_country" required
+                   value="US" maxlength="2" placeholder="US" style="max-width:80px">
+            <div class="form-text">2-letter ISO country code.</div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">CA Validity Period</label>
+            <select class="form-select" name="validity_days" style="max-width:220px">
+              <option value="1825">5 years</option>
+              <option value="3650" selected>10 years (recommended)</option>
+              <option value="7300">20 years</option>
+            </select>
+          </div>
+
+          <div class="alert alert-info border-0 bg-info-subtle small">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            A 4096-bit RSA key pair will be generated. This may take a few seconds.
+          </div>
+
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-shield-plus me-2"></i>Initialize CA
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

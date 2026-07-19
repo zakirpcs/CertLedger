@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CertLedger{% endblock %} — Internal CA</title>
+  <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/style.css?v={{ static_v }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="ent-app">
+
+{% block body %}
+{% set path = request.url.path %}
+
+<div class="cl-topstripe"></div>
+
+<header class="cl-header">
+  <div class="container cl-header-inner">
+
+    <!-- Brand -->
+    <a class="cl-brand" href="/">
+      <span class="cl-brand-icon"><i class="bi bi-shield-lock-fill"></i></span>
+      <span class="cl-brand-text">
+        <span class="cl-brand-name">CertLedger</span>
+        <span class="cl-brand-sub">Internal CA</span>
+      </span>
+    </a>
+
+    <!-- Mobile toggle -->
+    <button class="cl-hamburger" id="clHamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <!-- Nav + Actions -->
+    <div class="cl-nav-wrap" id="clNavWrap">
+      <nav class="cl-nav" aria-label="Main navigation">
+        <a class="cl-nav-link {% if path == '/' %}cl-nav-active{% endif %}" href="/">Home</a>
+        <a class="cl-nav-link {% if path == '/generate' %}cl-nav-active{% endif %}" href="/generate">Generate CSR</a>
+        <a class="cl-nav-link {% if path == '/submit' %}cl-nav-active{% endif %}" href="/submit">Submit CSR</a>
+        <a class="cl-nav-link {% if path == '/status' %}cl-nav-active{% endif %}" href="/status">Check Status</a>
+        <a class="cl-nav-link {% if path == '/trust' %}cl-nav-active{% endif %}" href="/trust">Trust Store</a>
+      </nav>
+
+      <div class="cl-header-actions">
+        <a class="cl-action-ghost" href="/ca.crt" title="Download CA Certificate">
+          <i class="bi bi-download"></i>
+          <span>CA Cert</span>
+        </a>
+        <a class="cl-action-primary" href="/admin/login">
+          <i class="bi bi-shield-check"></i>
+          <span>Admin</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+<div class="container py-4">
+  {% block content %}{% endblock %}
+</div>
+
+<footer class="cl-footer">
+  <div class="container cl-footer-inner">
+    <span class="cl-footer-brand"><i class="bi bi-shield-lock-fill"></i> CertLedger</span>
+    <span class="cl-footer-copy">Internal Certificate Authority</span>
+    <a class="cl-footer-link" href="/ca.crt"><i class="bi bi-download me-1"></i>CA Certificate</a>
+  </div>
+</footer>
+
+<script>
+  const btn = document.getElementById('clHamburger');
+  const wrap = document.getElementById('clNavWrap');
+  btn.addEventListener('click', () => {
+    const open = wrap.classList.toggle('cl-nav-open');
+    btn.setAttribute('aria-expanded', open);
+    btn.classList.toggle('cl-hamburger-open', open);
+  });
+</script>
+{% endblock %}
+
+<!-- Toast container -->
+<div id="clToastStack" class="cl-toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+<!-- Global custom alert modal -->
+<div id="clAlertOverlay" class="cl-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="clAlertTitle">
+  <div class="cl-alert-box" id="clAlertBox">
+    <div class="cl-alert-stripe" id="clAlertStripe"></div>
+    <div class="cl-alert-inner">
+      <div class="cl-alert-icon-wrap" id="clAlertIconWrap">
+        <i class="bi" id="clAlertIcon"></i>
+      </div>
+      <div class="cl-alert-body">
+        <div class="cl-alert-title" id="clAlertTitle"></div>
+        <div class="cl-alert-msg" id="clAlertMsg"></div>
+      </div>
+    </div>
+    <div class="cl-alert-footer">
+      <button class="cl-alert-btn" id="clAlertClose" autofocus>OK</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/vendor/bootstrap.bundle.min.js"></script>
+<script src="/static/js/main.js?v={{ static_v }}"></script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

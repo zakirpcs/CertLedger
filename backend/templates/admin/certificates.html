@@ -1,0 +1,191 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}All Certificates{% endblock %}
+{% set active = 'certificates' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">All Certificates</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+  <h3 class="fw-bold mb-0">
+    <i class="bi bi-journal-text text-primary me-2"></i>All Certificates
+    <span class="text-muted fs-6 fw-normal ms-2" id="certCount">{{ total }} result{{ 's' if total != 1 else '' }}</span>
+  </h3>
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <form method="get" id="certFilterForm" class="d-flex gap-2 flex-wrap align-items-end" autocomplete="off">
+      <div>
+        <label class="form-label mb-1 small fw-semibold">Status</label>
+        <select class="form-select form-select-sm" name="status" style="min-width:130px" autocomplete="off">
+          <option value="">All</option>
+          {% for s in statuses %}
+          <option value="{{ s.value }}" {% if filter_status == s.value %}selected{% endif %}>{{ s.value | capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-grow-1" style="min-width:200px">
+        <label class="form-label mb-1 small fw-semibold">Search</label>
+        <div class="cl-search-input">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control form-control-sm" name="search"
+                 value="{{ search }}" autocomplete="off"
+                 placeholder="Type 3+ characters to search…">
+        </div>
+      </div>
+      <div>
+        <a href="/admin/certificates" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x-lg me-1"></i>Clear
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% set badge_map = {'pending': 'warning', 'issued': 'success', 'revoked': 'danger', 'rejected': 'secondary'} %}
+
+<div id="certResults">
+{% if not certs %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body py-5 text-center text-muted">
+    <i class="bi bi-search fs-1 mb-3 d-block"></i>
+    <h5>No certificates found</h5>
+    <p class="mb-0">Try adjusting your filters.</p>
+  </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Common Name</th>
+            <th>Requester</th>
+            <th>Status</th>
+            <th>Serial</th>
+            <th>Issued</th>
+            <th>Expires</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in certs %}
+          <tr>
+            <td class="text-muted small">{{ r.id }}</td>
+            <td>
+              <strong class="d-block small">{{ r.common_name or '—' }}</strong>
+              <span class="text-muted smaller font-monospace">{{ r.tracking_id[:8] }}…</span>
+            </td>
+            <td>
+              <div class="small">{{ r.requester_name }}</div>
+              <div class="text-muted smaller">{{ r.requester_email }}</div>
+            </td>
+            <td>
+              <span class="badge bg-{{ badge_map.get(r.status, 'secondary') }}">{{ r.status | upper }}</span>
+            </td>
+            <td><code class="smaller">{{ r.serial_number or '—' }}</code></td>
+            <td class="text-muted small">{{ r.issued_at.strftime('%Y-%m-%d') if r.issued_at else '—' }}</td>
+            <td class="small">{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '—' }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="/admin/certificate/{{ r.id }}" class="btn btn-sm btn-outline-secondary" title="View">
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if r.status == 'revoked' %}
+                {% if r.expires_at and r.expires_at <= now_naive %}
+                <form method="post" action="/admin/certificate/{{ r.id }}/delete" class="d-inline">
+                  <button type="button" class="btn btn-sm btn-outline-danger"
+                          data-confirm-msg="Permanently delete the revoked certificate for {{ r.common_name or 'this request' }}? It has expired and this cannot be recovered."
+                          data-confirm-type="danger" title="Delete (expired)">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                        title="Deletable after expiry ({{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else 'unknown' }})">
+                  <i class="bi bi-lock"></i>
+                </button>
+                {% endif %}
+                {% elif r.status == 'rejected' %}
+                <form method="post" action="/admin/certificate/{{ r.id }}/delete" class="d-inline">
+                  <button type="button" class="btn btn-sm btn-outline-danger"
+                          data-confirm-msg="Permanently delete the rejected request for {{ r.common_name or 'this request' }}? This cannot be recovered."
+                          data-confirm-type="danger" title="Delete">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% elif r.status == 'pending' %}
+                <form method="post" action="/admin/certificate/{{ r.id }}/delete" class="d-inline">
+                  <button type="button" class="btn btn-sm btn-outline-danger"
+                          data-confirm-msg="Permanently delete the pending request for {{ r.common_name or 'this request' }}? This cannot be recovered."
+                          data-confirm-type="danger" title="Delete">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if total_pages > 1 %}
+    {% set qs_base = 'status=' ~ filter_status ~ '&search=' ~ search %}
+    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top">
+      <span class="text-muted small">
+        Showing {{ (page - 1) * per_page + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}
+      </span>
+      <nav aria-label="Page navigation">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="?{{ qs_base }}&page={{ page - 1 }}" aria-label="Previous">&#8249;</a>
+          </li>
+          {% for p in page_range %}
+          {% if p is none %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% else %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="?{{ qs_base }}&page={{ p }}">{{ p }}</a>
+          </li>
+          {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="?{{ qs_base }}&page={{ page + 1 }}" aria-label="Next">&#8250;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Force the filter controls to match the URL. Browsers restore form-control
+  // values from history (autofill + back/forward bfcache), which could otherwise
+  // re-select a stale status after navigating back to the list (e.g. following a
+  // delete). Re-syncing to the URL makes the address bar the single source of truth.
+  function syncCertFilterToUrl() {
+    var params = new URLSearchParams(location.search);
+    var sel = document.querySelector('#certFilterForm select[name="status"]');
+    if (sel) sel.value = params.get('status') || '';
+    var txt = document.querySelector('#certFilterForm input[name="search"]');
+    if (txt) txt.value = params.get('search') || '';
+  }
+  document.addEventListener('DOMContentLoaded', syncCertFilterToUrl);
+  window.addEventListener('pageshow', syncCertFilterToUrl); // fires on bfcache restore
+  syncCertFilterToUrl(); // run now in case DOMContentLoaded already fired
+
+  liveSearch('certFilterForm', ['certCount', 'certResults'], { minChars: 3 });
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <!-- Hero -->
+    <div class="cl-hero text-center mb-5">
+      <div class="cl-hero-icon mb-3">
+        <i class="bi bi-shield-lock-fill"></i>
+      </div>
+      <h1 class="fw-bold mb-2">Internal Certificate Authority</h1>
+      <p class="lead text-muted mb-4">
+        Request and manage TLS/SSL certificates issued by your organization's root CA.
+      </p>
+      {% if ca_ready %}
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+          <a href="/submit" class="btn btn-primary btn-lg px-4">
+            <i class="bi bi-upload me-2"></i>Submit CSR
+          </a>
+          <a href="/status" class="btn btn-outline-secondary btn-lg px-4">
+            <i class="bi bi-search me-2"></i>Check Status
+          </a>
+        </div>
+      {% else %}
+        <div class="alert alert-warning d-inline-flex align-items-center gap-2 px-4">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>CA not yet initialized. <a href="/admin/login" class="alert-link">Admin setup required</a>.</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- How it works -->
+    <h5 class="text-muted fw-semibold text-uppercase letter-spacing mb-3">How it works</h5>
+    <div class="row g-3 mb-5">
+      <div class="col-md-4">
+        <div class="cl-step-card">
+          <div class="cl-step-num">1</div>
+          <h6 class="fw-bold">Generate a CSR</h6>
+          <p class="text-muted small mb-2">Create a Certificate Signing Request (CSR) using OpenSSL or your server's tools.</p>
+          <code class="cl-code-hint">openssl req -new -newkey rsa:2048 \<br>&nbsp;&nbsp;-keyout server.key -out server.csr</code>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="cl-step-card">
+          <div class="cl-step-num">2</div>
+          <h6 class="fw-bold">Submit for Signing</h6>
+          <p class="text-muted small mb-2">Upload your CSR file with your contact information. The CA admin will review your request.</p>
+          <a href="/submit" class="btn btn-sm btn-outline-primary mt-1">Go to Submit</a>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="cl-step-card">
+          <div class="cl-step-num">3</div>
+          <h6 class="fw-bold">Download Certificate</h6>
+          <p class="text-muted small mb-2">Once approved, download your signed certificate and install it on your server.</p>
+          <a href="/status" class="btn btn-sm btn-outline-primary mt-1">Check Status</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trust the CA -->
+    {% if ca_ready %}
+    <div class="cl-info-panel mb-4">
+      <div class="d-flex align-items-start gap-3">
+        <i class="bi bi-patch-check-fill text-primary fs-4 flex-shrink-0 mt-1"></i>
+        <div>
+          <h6 class="fw-bold mb-1">Trust This CA in Your Browser &amp; OS</h6>
+          <p class="text-muted small mb-3">
+            To avoid security warnings, install the root CA certificate into your browser or operating system trust store.
+            We have step-by-step instructions for Chrome, Firefox, Edge, Safari, Windows, macOS, Linux, Docker, Kubernetes, and more.
+          </p>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="/trust" class="btn btn-sm btn-primary">
+              <i class="bi bi-patch-check me-1"></i>Trust Store Instructions
+            </a>
+            <a href="/ca.crt" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>Download CA Certificate
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

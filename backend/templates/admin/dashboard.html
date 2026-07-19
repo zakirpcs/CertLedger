@@ -1,0 +1,185 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Dashboard{% endblock %}
+{% set active = 'dashboard' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card stat-card-warning">
+      <div class="stat-card-icon"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-card-value">{{ counts.pending }}</div>
+      <div class="stat-card-label">Pending</div>
+      {% if counts.pending > 0 %}
+      <a href="/admin/pending" class="stat-card-link">Review now</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card stat-card-success">
+      <div class="stat-card-icon"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-card-value">{{ counts.issued }}</div>
+      <div class="stat-card-label">Issued</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card stat-card-danger">
+      <div class="stat-card-icon"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-card-value">{{ counts.revoked }}</div>
+      <div class="stat-card-label">Revoked</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card stat-card-secondary">
+      <div class="stat-card-icon"><i class="bi bi-slash-circle"></i></div>
+      <div class="stat-card-value">{{ counts.rejected }}</div>
+      <div class="stat-card-label">Rejected</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Expiring Soon -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold border-bottom py-3 d-flex justify-content-between">
+        <span><i class="bi bi-clock-history text-warning me-2"></i>Expiring Within 30 Days</span>
+        <a href="/admin/certificates?status=issued" class="btn btn-sm btn-outline-secondary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {% if expiring_soon %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Common Name</th>
+                <th>Requester</th>
+                <th>Expires</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in expiring_soon %}
+              <tr>
+                <td><code class="small">{{ r.common_name }}</code></td>
+                <td>{{ r.requester_name }}</td>
+                <td class="text-warning fw-semibold">{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '—' }}</td>
+                <td><a href="/admin/certificate/{{ r.id }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="bi bi-check-circle text-success fs-3 mb-2 d-block"></i>
+          No certificates expiring in the next 30 days.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+          <div class="d-flex align-items-center gap-3 flex-grow-1">
+            <span class="fw-semibold text-nowrap" id="dashActivityMeta">
+              {% if search %}
+              <i class="bi bi-search text-primary me-2"></i>Search Results
+              {% if recent_total is not none %}
+              <span class="text-muted fs-6 fw-normal ms-1">{{ recent_total }} found</span>
+              {% endif %}
+              {% else %}
+              <i class="bi bi-activity text-primary me-2"></i>Recent Activity
+              {% endif %}
+            </span>
+            <form method="get" id="dashSearchForm" class="flex-grow-1" style="max-width: 480px;" autocomplete="off">
+              <div class="cl-search-input">
+                <i class="bi bi-search"></i>
+                <input type="text" class="form-control form-control-sm" name="search"
+                       value="{{ search }}" autocomplete="off"
+                       placeholder="Type 3+ characters to search…">
+              </div>
+            </form>
+          </div>
+          <a href="/admin/certificates{% if search %}?search={{ search }}{% endif %}" id="dashAllBtn" class="btn btn-sm btn-outline-secondary text-nowrap">
+            {% if search %}View All Matches{% else %}All Certificates{% endif %}
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0" id="dashResults">
+        {% if recent %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Common Name</th>
+                <th>Requester</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in recent %}
+              {% set badge_map = {'pending': 'warning', 'issued': 'success', 'revoked': 'danger', 'rejected': 'secondary'} %}
+              <tr>
+                <td><strong class="small">{{ r.common_name or '—' }}</strong></td>
+                <td>
+                  <div class="small">{{ r.requester_name }}</div>
+                  <div class="text-muted smaller">{{ r.requester_email }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-{{ badge_map.get(r.status, 'secondary') }}">
+                    {{ r.status | upper }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
+                <td><a href="/admin/certificate/{{ r.id }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if search and recent_total and recent_total > recent | length %}
+        <div class="px-3 py-2 border-top text-muted small">
+          Showing top {{ recent | length }} of {{ recent_total }} —
+          <a href="/admin/certificates?search={{ search }}">view all on Certificates page</a>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="bi bi-inbox fs-3 mb-2 d-block"></i>
+          {% if search %}No certificates match "{{ search }}".{% else %}No certificate requests yet.{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Force the search box to match the URL, defeating browser form-state
+  // restoration (autofill + back/forward bfcache) that could otherwise leave a
+  // stale query in the field after navigating back to the dashboard.
+  function syncDashFilterToUrl() {
+    var params = new URLSearchParams(location.search);
+    var txt = document.querySelector('#dashSearchForm input[name="search"]');
+    if (txt) txt.value = params.get('search') || '';
+  }
+  document.addEventListener('DOMContentLoaded', syncDashFilterToUrl);
+  window.addEventListener('pageshow', syncDashFilterToUrl); // fires on bfcache restore
+  syncDashFilterToUrl(); // run now in case DOMContentLoaded already fired
+
+  liveSearch('dashSearchForm', ['dashActivityMeta', 'dashAllBtn', 'dashResults'], { minChars: 3 });
+</script>
+{% endblock %}

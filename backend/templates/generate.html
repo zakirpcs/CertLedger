@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Generate Key & CSR{% endblock %}
+
+{% block head %}{% endblock %}
+
+{% block content %}
+<div class="gen-page">
+
+  <!-- Page header -->
+  <div class="gen-page-header">
+    <div>
+      <h2 class="gen-page-title">Generate Private Key &amp; CSR</h2>
+      <p class="gen-page-sub">All cryptography runs in your browser — your private key never leaves this device.</p>
+    </div>
+    <div class="gen-page-badge">
+      <i class="bi bi-lock-fill"></i> Browser-only crypto
+    </div>
+  </div>
+
+  <div class="gen-layout">
+
+    <!-- ═══════════════════════════════════════════════════════
+         LEFT PANEL — Form
+    ════════════════════════════════════════════════════════════ -->
+    <div class="gen-form-panel">
+
+      <!-- Domain & SANs -->
+      <div class="gen-card">
+        <div class="gen-card-label">Certificate Identity</div>
+
+        <div class="gen-field">
+          <label class="gen-label" for="cn">Common Name <span class="gen-required">*</span></label>
+          <input class="gen-input" type="text" id="cn" name="cn" required
+                 placeholder="api.example.com" autocomplete="off" spellcheck="false">
+          <div class="gen-hint">Primary hostname, domain, or service name.</div>
+        </div>
+
+        <div class="gen-field">
+          <label class="gen-label" for="sanInput">Subject Alternative Names</label>
+          <div class="san-tag-wrap" id="sanTagWrap">
+            <div id="sanTags"></div>
+            <input type="text" id="sanInput" class="san-tag-input"
+                   placeholder="Type hostname or IP, press Enter…" spellcheck="false" autocomplete="off">
+          </div>
+          <input type="hidden" id="sanHidden" name="sans">
+          <div class="gen-hint">DNS names and IPs this certificate must cover. <kbd>Enter</kbd> or <kbd>,</kbd> to add each one.</div>
+        </div>
+      </div>
+
+      <!-- Org details (collapsible) -->
+      <div class="gen-card">
+        <button class="gen-collapse-btn" type="button"
+                data-bs-toggle="collapse" data-bs-target="#orgDetails" aria-expanded="false">
+          <span class="gen-card-label mb-0">Organization Details</span>
+          <i class="bi bi-chevron-down gen-chevron"></i>
+        </button>
+        <div class="collapse" id="orgDetails">
+          <div class="gen-field mt-3">
+            <label class="gen-label" for="org">Organization</label>
+            <input class="gen-input" type="text" id="org" name="org" placeholder="Acme Corp">
+          </div>
+          <div class="row g-2">
+            <div class="col-8">
+              <div class="gen-field">
+                <label class="gen-label" for="ou">Org Unit</label>
+                <input class="gen-input" type="text" id="ou" name="ou" placeholder="Engineering">
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="gen-field">
+                <label class="gen-label" for="country">Country</label>
+                <input class="gen-input" type="text" id="country" name="country"
+                       placeholder="US" maxlength="2" style="text-transform:uppercase">
+              </div>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="gen-field">
+                <label class="gen-label" for="state">State / Province</label>
+                <input class="gen-input" type="text" id="state" name="state" placeholder="California">
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="gen-field">
+                <label class="gen-label" for="city">City / Locality</label>
+                <input class="gen-input" type="text" id="city" name="city" placeholder="San Francisco">
+              </div>
+            </div>
+          </div>
+          <div class="gen-field">
+            <label class="gen-label" for="email">Email Address</label>
+            <input class="gen-input" type="email" id="email" name="email" placeholder="admin@example.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Key options -->
+      <div class="gen-card">
+        <div class="gen-card-label">Key Options</div>
+        <div class="gen-key-options">
+          <label class="gen-key-opt">
+            <input type="radio" name="keySize" value="2048" checked>
+            <span class="gen-key-opt-body">
+              <span class="gen-key-opt-name">RSA 2048</span>
+              <span class="gen-key-opt-desc">Standard — fast generation, widely supported</span>
+            </span>
+          </label>
+          <label class="gen-key-opt">
+            <input type="radio" name="keySize" value="4096">
+            <span class="gen-key-opt-body">
+              <span class="gen-key-opt-name">RSA 4096</span>
+              <span class="gen-key-opt-desc">Stronger — slower generation (~5–10 s)</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div id="httpCryptoNote" class="gen-http-note" style="display:none">
+        <i class="bi bi-info-circle me-2"></i>
+        You're on HTTP — key generation runs in software and may take 5–30 s depending on key size.
+        For faster generation, access this app over HTTPS.
+      </div>
+
+      <button class="gen-btn-generate" type="button" id="generateBtn">
+        <i class="bi bi-cpu me-2"></i>Generate Key &amp; CSR
+      </button>
+
+    </div><!-- /gen-form-panel -->
+
+    <!-- ═══════════════════════════════════════════════════════
+         RIGHT PANEL — Output
+    ════════════════════════════════════════════════════════════ -->
+    <div class="gen-output-panel" id="outputPanel">
+
+      <!-- Placeholder -->
+      <div class="gen-placeholder" id="outputPlaceholder">
+        <div class="gen-placeholder-icon"><i class="bi bi-file-earmark-lock2"></i></div>
+        <div class="gen-placeholder-title">Your key &amp; CSR will appear here</div>
+        <div class="gen-placeholder-sub">Fill in the Common Name and click Generate.</div>
+      </div>
+
+      <!-- Output content (hidden until generated) -->
+      <div id="outputContent" style="display:none">
+
+        <!-- Summary bar -->
+        <div class="gen-summary-bar">
+          <div class="gen-summary-cn">
+            <span class="gen-summary-label">Generated for</span>
+            <code id="outCN" class="gen-summary-val"></code>
+          </div>
+          <div id="sanPreviewRow" style="display:none">
+            <div id="outSans" class="gen-sans-preview"></div>
+          </div>
+        </div>
+
+        <!-- Private key -->
+        <div class="gen-output-block gen-block-key">
+          <div class="gen-output-block-header">
+            <div>
+              <span class="gen-block-title">
+                <i class="bi bi-key-fill me-2"></i>Private Key
+              </span>
+              <span class="gen-block-badge gen-badge-warn">Keep secret</span>
+            </div>
+            <div class="gen-block-actions">
+              <button type="button" class="gen-icon-btn"
+                      onclick="copyField('outPrivKey', this)" title="Copy">
+                <i class="bi bi-clipboard"></i>
+              </button>
+              <a class="gen-icon-btn" id="dlPrivKey" title="Download .key">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+          </div>
+          <div class="gen-key-warning">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Save this file now. It will not be stored on the server and cannot be recovered.
+          </div>
+          <textarea class="gen-pem-box" id="outPrivKey" readonly spellcheck="false"
+                    onclick="this.select()"></textarea>
+        </div>
+
+        <!-- CSR -->
+        <div class="gen-output-block gen-block-csr">
+          <div class="gen-output-block-header">
+            <div>
+              <span class="gen-block-title">
+                <i class="bi bi-file-earmark-code me-2"></i>Certificate Signing Request
+              </span>
+              <span class="gen-block-badge gen-badge-ok">Submit this to the CA</span>
+            </div>
+            <div class="gen-block-actions">
+              <button type="button" class="gen-icon-btn"
+                      onclick="copyField('outCSR', this)" title="Copy">
+                <i class="bi bi-clipboard"></i>
+              </button>
+              <a class="gen-icon-btn" id="dlCSR" title="Download .csr">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+          </div>
+          <textarea class="gen-pem-box" id="outCSR" readonly spellcheck="false"
+                    onclick="this.select()"></textarea>
+        </div>
+
+      </div><!-- /outputContent -->
+
+      <!-- Inline submission form -->
+      <div id="submitSection" style="display:none">
+        <div class="gen-submit-divider">
+          <span>Submit to Certificate Authority</span>
+        </div>
+
+        <div id="submitSuccess" style="display:none"></div>
+
+        <form id="submitToCA" class="gen-submit-form">
+          <input type="hidden" id="submitCsrHidden">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="gen-label">Your Name <span class="gen-required">*</span></label>
+              <input class="gen-input" type="text" name="requester_name" required placeholder="Jane Smith">
+            </div>
+            <div class="col-sm-6">
+              <label class="gen-label">Email <span class="gen-required">*</span></label>
+              <input class="gen-input" type="email" name="requester_email" required placeholder="jane@example.com">
+            </div>
+            <div class="col-sm-6">
+              <label class="gen-label">Department</label>
+              <input class="gen-input" type="text" name="requester_department" placeholder="Engineering">
+            </div>
+            <div class="col-sm-6">
+              <label class="gen-label">Validity</label>
+              <select class="gen-input" name="validity_days">
+                <option value="90">90 days</option>
+                <option value="180">180 days</option>
+                <option value="365" selected>1 year</option>
+                <option value="730">2 years</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="gen-label">Purpose / Notes</label>
+              <textarea class="gen-input" name="purpose" rows="2"
+                        placeholder="e.g. API gateway TLS certificate for production"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="gen-btn-submit mt-3">
+            <i class="bi bi-send me-2"></i>Submit to CA
+          </button>
+        </form>
+      </div>
+
+    </div><!-- /gen-output-panel -->
+  </div><!-- /gen-layout -->
+
+</div><!-- /gen-page -->
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/vendor/forge.min.js"></script>
+<script src="/static/js/generate.js"></script>
+<script>
+  document.getElementById('orgDetails').addEventListener('show.bs.collapse', () => {
+    document.querySelector('.gen-chevron').style.transform = 'rotate(180deg)';
+  });
+  document.getElementById('orgDetails').addEventListener('hide.bs.collapse', () => {
+    document.querySelector('.gen-chevron').style.transform = '';
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Check Status{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h2 class="fw-bold mb-1"><i class="bi bi-search text-primary me-2"></i>Check Certificate Status</h2>
+    <p class="text-muted mb-4">Look up by tracking ID, or search by name or email.</p>
+
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-body p-4">
+        <label class="form-label small fw-semibold mb-2">Tracking ID</label>
+        <form method="get" class="d-flex gap-2">
+          <input type="text" class="form-control" name="id" value="{{ query_id }}"
+                 placeholder="e.g. 550e8400-e29b-41d4-a716-…">
+          <button type="submit" class="btn btn-primary px-4 text-nowrap">
+            <i class="bi bi-search me-1"></i>Look Up
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <label class="form-label small fw-semibold mb-2">Search by Name or Email</label>
+        <form method="get" id="statusSearchForm" autocomplete="off">
+          <div class="cl-search-input">
+            <i class="bi bi-search"></i>
+            <input type="text" class="form-control" name="search" value="{{ search }}"
+                   autocomplete="off" placeholder="Type 3+ characters — name, email, or common name…">
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if not_found %}
+    <div class="alert alert-warning border-0 shadow-sm">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      No certificate request found with ID <strong>{{ query_id }}</strong>. Please check your tracking ID.
+    </div>
+    {% endif %}
+
+    <div id="statusResults">
+    {% if search and not cert_req %}
+    {% set badge_map = {'pending': 'warning', 'issued': 'success', 'revoked': 'danger', 'rejected': 'secondary'} %}
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent fw-semibold py-3">
+        <i class="bi bi-list-ul me-2"></i>
+        {% if search_results %}
+          {{ search_results | length }} result{{ 's' if search_results | length != 1 else '' }} for "{{ search }}"
+        {% else %}
+          No results for "{{ search }}"
+        {% endif %}
+      </div>
+      {% if search_results %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Common Name</th>
+                <th>Requester</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in search_results %}
+              <tr>
+                <td><strong class="small">{{ r.common_name or '—' }}</strong></td>
+                <td>
+                  <div class="small">{{ r.requester_name }}</div>
+                  <div class="text-muted small">{{ r.requester_email }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-{{ badge_map.get(r.status, 'secondary') }}">{{ r.status | upper }}</span>
+                </td>
+                <td class="text-muted small">{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
+                <td>
+                  <a href="/status?id={{ r.tracking_id }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-eye me-1"></i>View
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card-body py-4 text-center text-muted">
+        <i class="bi bi-inbox fs-3 mb-2 d-block"></i>
+        No certificate requests matched your search.
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    </div>
+
+    {% if cert_req %}
+    <!-- Status Banner -->
+    {% set status_map = {
+      'pending':  ('warning', 'hourglass-split', 'Pending Review'),
+      'issued':   ('success', 'check-circle-fill', 'Certificate Issued'),
+      'revoked':  ('danger', 'x-circle-fill', 'Certificate Revoked'),
+      'rejected': ('secondary', 'slash-circle-fill', 'Request Rejected'),
+    } %}
+    {% set s = status_map.get(cert_req.status, ('secondary', 'question-circle', cert_req.status)) %}
+    <div class="alert alert-{{ s[0] }} border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
+      <i class="bi bi-{{ s[1] }} fs-3"></i>
+      <div>
+        <div class="fw-bold fs-5">{{ s[2] }}</div>
+        <div class="small">
+          {% if cert_req.status == 'pending' %}
+            Your request is in the queue and will be reviewed by the CA administrator.
+          {% elif cert_req.status == 'issued' %}
+            Your certificate is ready for download below.
+          {% elif cert_req.status == 'revoked' %}
+            This certificate has been revoked. Reason: {{ cert_req.revocation_reason or 'Unspecified' }}
+          {% elif cert_req.status == 'rejected' %}
+            Your request was not approved.
+            {% if cert_req.admin_notes %}Notes: {{ cert_req.admin_notes }}{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Details -->
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-header bg-transparent fw-semibold py-3">
+        <i class="bi bi-card-list me-2"></i>Request Details
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Tracking ID</div>
+            <code class="small">{{ cert_req.tracking_id }}</code>
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Status</div>
+            <span class="badge bg-{{ s[0] }} px-2 py-1">{{ cert_req.status | upper }}</span>
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Common Name</div>
+            <strong>{{ cert_req.common_name or '—' }}</strong>
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Requester</div>
+            {{ cert_req.requester_name }}
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Submitted</div>
+            {{ cert_req.submitted_at.strftime('%Y-%m-%d %H:%M UTC') if cert_req.submitted_at else '—' }}
+          </div>
+          {% if cert_req.status == 'issued' %}
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Issued</div>
+            {{ cert_req.issued_at.strftime('%Y-%m-%d %H:%M UTC') if cert_req.issued_at else '—' }}
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Expires</div>
+            <strong>{{ cert_req.expires_at.strftime('%Y-%m-%d %H:%M UTC') if cert_req.expires_at else '—' }}</strong>
+          </div>
+          <div class="col-sm-6">
+            <div class="cl-detail-label">Serial Number</div>
+            <code>{{ cert_req.serial_number or '—' }}</code>
+          </div>
+          {% endif %}
+          {% if sans %}
+          <div class="col-12">
+            <div class="cl-detail-label">Subject Alternative Names</div>
+            <div class="d-flex flex-wrap gap-1">
+              {% for san in sans %}
+              <span class="badge bg-light text-dark border">{{ san }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if cert_req.status == 'issued' %}
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="/download/{{ cert_req.tracking_id }}" class="btn btn-success">
+        <i class="bi bi-download me-2"></i>Download Certificate (.crt)
+      </a>
+      <a href="/ca.crt" class="btn btn-outline-secondary">
+        <i class="bi bi-download me-2"></i>Download CA Certificate
+      </a>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Force the search box to match the URL, defeating browser form-state
+  // restoration (autofill + back/forward bfcache) that could otherwise leave a
+  // stale query in the field after navigating back to this page.
+  function syncStatusFilterToUrl() {
+    var params = new URLSearchParams(location.search);
+    var txt = document.querySelector('#statusSearchForm input[name="search"]');
+    if (txt) txt.value = params.get('search') || '';
+  }
+  document.addEventListener('DOMContentLoaded', syncStatusFilterToUrl);
+  window.addEventListener('pageshow', syncStatusFilterToUrl); // fires on bfcache restore
+  syncStatusFilterToUrl(); // run now in case DOMContentLoaded already fired
+
+  liveSearch('statusSearchForm', 'statusResults', { minChars: 3 });
+</script>
+{% endblock %}

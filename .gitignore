@@ -1,0 +1,15 @@
+# Secrets & local environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Runtime data
+ca-data/
+*.db
+
+# Debug screenshots
+problem*.png

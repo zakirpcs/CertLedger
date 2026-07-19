@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Submit CSR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h2 class="fw-bold mb-1"><i class="bi bi-upload text-primary me-2"></i>Submit Certificate Request</h2>
+    <p class="text-muted mb-4">Upload your CSR file and provide your contact information for the CA admin.</p>
+
+    {% if success %}
+    <div class="alert alert-success border-0 shadow-sm">
+      <h5 class="alert-heading fw-bold mb-2"><i class="bi bi-check-circle-fill me-2"></i>Request Submitted!</h5>
+      <p class="mb-2">Your CSR for <strong>{{ common_name }}</strong> has been received and is pending review.</p>
+      <hr>
+      <p class="mb-2">Your tracking ID:</p>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <code class="fs-6 bg-light px-3 py-2 rounded border" id="trackingId">{{ success }}</code>
+        <button class="btn btn-sm btn-outline-secondary" onclick="copyTrackingId()">
+          <i class="bi bi-clipboard"></i> Copy
+        </button>
+      </div>
+      <hr>
+      <a href="/status?id={{ success }}" class="btn btn-success btn-sm">
+        <i class="bi bi-search me-1"></i>Check Request Status
+      </a>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-danger border-0 shadow-sm">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if not success %}
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data" novalidate id="csrForm">
+
+          <h6 class="fw-semibold text-muted text-uppercase small mb-3">Your Information</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="requester_name" required placeholder="Jane Smith">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" name="requester_email" required placeholder="jane@example.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Department</label>
+              <input type="text" class="form-control" name="requester_department" placeholder="Engineering">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-semibold">Purpose / Notes</label>
+              <textarea class="form-control" name="purpose" rows="2" placeholder="e.g. API gateway TLS certificate for production cluster"></textarea>
+            </div>
+          </div>
+
+          <h6 class="fw-semibold text-muted text-uppercase small mb-3">Certificate Request</h6>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">CSR File (.csr / .pem) <span class="text-danger">*</span></label>
+              <div class="cl-upload-area" id="uploadArea">
+                <i class="bi bi-file-earmark-code fs-2 text-muted mb-2 d-block"></i>
+                <p class="mb-1 fw-semibold">Drop your CSR file here or click to browse</p>
+                <p class="text-muted small mb-0">PEM-encoded CSR only &mdash; <code>.csr</code>, <code>.pem</code></p>
+                <input type="file" class="cl-file-input" name="csr_file" id="csrFile" accept=".csr,.pem,.txt" required>
+              </div>
+              <div id="fileInfo" class="mt-2 d-none">
+                <div class="d-flex align-items-center gap-2 text-success">
+                  <i class="bi bi-file-earmark-check-fill"></i>
+                  <span id="fileName" class="fw-semibold"></span>
+                  <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="clearFile()">Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Requested Validity</label>
+              <select class="form-select" name="validity_days">
+                <option value="90">90 days</option>
+                <option value="180">180 days</option>
+                <option value="365" selected>1 year (365 days)</option>
+                <option value="730">2 years (730 days)</option>
+              </select>
+              <div class="form-text">The CA admin may adjust this before signing.</div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4" id="submitBtn">
+              <i class="bi bi-send me-2"></i>Submit Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="cl-info-panel mt-4">
+      <h6 class="fw-bold mb-2"><i class="bi bi-terminal me-2"></i>Generate a CSR with OpenSSL</h6>
+      <pre class="cl-code-block mb-0"># Generate private key and CSR
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout server.key \
+  -out server.csr \
+  -subj "/CN=your.domain.com/O=YourOrg/C=US"
+
+# With Subject Alternative Names (recommended)
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout server.key \
+  -out server.csr \
+  -config <(cat /etc/ssl/openssl.cnf \
+    &lt;(printf "\n[SAN]\nsubjectAltName=DNS:your.domain.com,DNS:www.your.domain.com"))</pre>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyTrackingId() {
+  navigator.clipboard.writeText(document.getElementById('trackingId').textContent);
+  event.target.innerHTML = '<i class="bi bi-check"></i> Copied!';
+  setTimeout(() => event.target.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+}
+function clearFile() {
+  document.getElementById('csrFile').value = '';
+  document.getElementById('fileInfo').classList.add('d-none');
+  document.getElementById('uploadArea').classList.remove('has-file');
+}
+document.getElementById('csrFile')?.addEventListener('change', function() {
+  if (this.files[0]) {
+    document.getElementById('fileName').textContent = this.files[0].name;
+    document.getElementById('fileInfo').classList.remove('d-none');
+    document.getElementById('uploadArea').classList.add('has-file');
+  }
+});
+</script>
+{% endblock %}

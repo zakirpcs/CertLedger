@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% block title %}Trust Store Installation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <div class="mb-4">
+      <h2 class="fw-bold mb-1"><i class="bi bi-patch-check-fill text-primary me-2"></i>Trust Store Installation</h2>
+      <p class="text-muted mb-3">
+        Install the CA root certificate so your browser, OS, and tools automatically trust all certificates issued by this CA.
+      </p>
+      {% if ca_ready %}
+      <a href="/ca.crt" class="btn btn-primary">
+        <i class="bi bi-download me-2"></i>Download CA Certificate
+      </a>
+      {% else %}
+      <div class="alert alert-warning border-0 d-inline-flex align-items-center gap-2 px-3 py-2">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        CA not yet initialized — no certificate available to download.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Tab nav -->
+    <ul class="nav nav-tabs mb-0" id="trustTabs" role="tablist">
+      <li class="nav-item" role="presentation"><button class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#tab-browsers" aria-selected="true"><i class="bi bi-browser-chrome me-1"></i>Browsers</button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#tab-windows" aria-selected="false"><i class="bi bi-windows me-1"></i>Windows</button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#tab-macos" aria-selected="false"><i class="bi bi-apple me-1"></i>macOS</button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#tab-linux" aria-selected="false"><i class="bi bi-ubuntu me-1"></i>Linux</button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#tab-tools" aria-selected="false"><i class="bi bi-terminal me-1"></i>Dev Tools</button></li>
+    </ul>
+
+    <div class="tab-content trust-tab-content border border-top-0 rounded-bottom p-4">
+
+      <!-- ======== BROWSERS ======== -->
+      <div class="tab-pane fade show active" id="tab-browsers">
+        <div class="row g-4">
+
+          <!-- Chrome / Edge / Brave -->
+          <div class="col-12">
+            <div class="trust-card">
+              <div class="trust-card-header">
+                <span class="trust-browser-icons">
+                  <i class="bi bi-browser-chrome"></i>
+                  <i class="bi bi-browser-edge ms-1"></i>
+                </span>
+                <div>
+                  <h6 class="fw-bold mb-0">Google Chrome / Microsoft Edge / Brave</h6>
+                  <small class="text-muted">Chromium-based browsers — use the OS trust store on Windows &amp; macOS</small>
+                </div>
+              </div>
+
+              <div class="trust-os-tabs">
+                <ul class="nav nav-pills gap-1 mb-3" id="chromeTabs" role="tablist">
+                  <li class="nav-item" role="presentation"><button class="nav-link active py-1 px-3 small" role="tab" data-bs-toggle="tab" data-bs-target="#chrome-win" aria-selected="true">Windows</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3 small" role="tab" data-bs-toggle="tab" data-bs-target="#chrome-mac" aria-selected="false">macOS</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3 small" role="tab" data-bs-toggle="tab" data-bs-target="#chrome-linux" aria-selected="false">Linux</button></li>
+                </ul>
+                <div class="tab-content">
+                  <div class="tab-pane fade show active" id="chrome-win">
+                    <ol class="trust-steps">
+                      <li>Download <code>ca.crt</code> using the button above.</li>
+                      <li>Double-click the downloaded file → click <strong>Install Certificate</strong>.</li>
+                      <li>Choose <strong>Local Machine</strong> → Next.</li>
+                      <li>Select <strong>Place all certificates in the following store</strong> → Browse → choose <strong>Trusted Root Certification Authorities</strong>.</li>
+                      <li>Click Next → Finish → OK.</li>
+                      <li><strong>Restart Chrome/Edge.</strong></li>
+                    </ol>
+                    <div class="trust-alt">
+                      <strong>Or via PowerShell (admin):</strong>
+                      <pre class="cl-code-block mt-2 mb-0">Import-Certificate -FilePath "ca.crt" `
+  -CertStoreLocation Cert:\LocalMachine\Root</pre>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="chrome-mac">
+                    <ol class="trust-steps">
+                      <li>Download <code>ca.crt</code>.</li>
+                      <li>Double-click the file — it opens <strong>Keychain Access</strong> and imports it.</li>
+                      <li>In Keychain Access, find the certificate under <strong>System</strong> keychain.</li>
+                      <li>Double-click it → expand <strong>Trust</strong> → set <em>When using this certificate</em> to <strong>Always Trust</strong>.</li>
+                      <li>Close and enter your password to confirm.</li>
+                      <li><strong>Restart Chrome/Edge.</strong></li>
+                    </ol>
+                    <div class="trust-alt">
+                      <strong>Or via terminal:</strong>
+                      <pre class="cl-code-block mt-2 mb-0">sudo security add-trusted-cert \
+  -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.crt</pre>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="chrome-linux">
+                    <p class="small text-muted mb-2">On Linux, Chrome uses its own certificate database. Install via the <code>certutil</code> tool (<code>libnss3-tools</code> package).</p>
+                    <pre class="cl-code-block mb-2">sudo apt-get install -y libnss3-tools   # Debian/Ubuntu
+
+# Install for the current user's Chrome profile
+certutil -d sql:$HOME/.pki/nssdb \
+  -A -t "C,," -n "Internal CA" -i ca.crt
+
+# Install for Chromium
+certutil -d sql:$HOME/.pki/nssdb \
+  -A -t "C,," -n "Internal CA" -i ca.crt</pre>
+                    <p class="small text-muted mb-0"><strong>Restart Chrome/Chromium after running these commands.</strong></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Firefox -->
+          <div class="col-12">
+            <div class="trust-card">
+              <div class="trust-card-header">
+                <span class="trust-browser-icons"><i class="bi bi-browser-firefox"></i></span>
+                <div>
+                  <h6 class="fw-bold mb-0">Mozilla Firefox</h6>
+                  <small class="text-muted">Firefox maintains its own certificate store — OS certificates are NOT used</small>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <h6 class="fw-semibold small mb-2">Method 1 — Settings UI (all platforms)</h6>
+                  <ol class="trust-steps">
+                    <li>Download <code>ca.crt</code>.</li>
+                    <li>Open Firefox → <strong>Settings</strong> (<kbd>Alt</kbd> → Tools → Settings).</li>
+                    <li>Search for <em>"Certificates"</em> → click <strong>View Certificates</strong>.</li>
+                    <li>Go to the <strong>Authorities</strong> tab → click <strong>Import</strong>.</li>
+                    <li>Select <code>ca.crt</code>.</li>
+                    <li>Check <strong>"Trust this CA to identify websites"</strong> → OK.</li>
+                    <li>No restart needed.</li>
+                  </ol>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="fw-semibold small mb-2">Method 2 — Policy file (enterprise/fleet)</h6>
+                  <p class="text-muted small">Create <code>policies.json</code> in the Firefox installation directory:</p>
+                  <pre class="cl-code-block small">{
+  "policies": {
+    "Certificates": {
+      "Install": [
+        "/etc/ssl/certs/internal-ca.crt"
+      ]
+    }
+  }
+}</pre>
+                  <p class="text-muted small mb-0">Copy <code>ca.crt</code> to the path referenced above. Works on all platforms.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Safari -->
+          <div class="col-12">
+            <div class="trust-card">
+              <div class="trust-card-header">
+                <span class="trust-browser-icons"><i class="bi bi-apple"></i></span>
+                <div>
+                  <h6 class="fw-bold mb-0">Safari (macOS / iOS)</h6>
+                  <small class="text-muted">Safari uses the system keychain — install at the OS level</small>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <h6 class="fw-semibold small mb-2">macOS</h6>
+                  <ol class="trust-steps">
+                    <li>Download <code>ca.crt</code> and double-click it.</li>
+                    <li>Keychain Access opens — add to <strong>System</strong> keychain.</li>
+                    <li>Find the cert, double-click → <strong>Trust</strong> → <em>Always Trust</em>.</li>
+                    <li>Safari trusts it immediately (no restart needed).</li>
+                  </ol>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="fw-semibold small mb-2">iOS / iPadOS</h6>
+                  <ol class="trust-steps">
+                    <li>Email or AirDrop <code>ca.crt</code> to the device, or host it at a URL.</li>
+                    <li>Open the file — iOS prompts to install a profile. Tap <strong>Allow</strong>.</li>
+                    <li>Go to <strong>Settings → General → VPN &amp; Device Management</strong> → tap the profile → <strong>Install</strong>.</li>
+                    <li>Then go to <strong>Settings → General → About → Certificate Trust Settings</strong>.</li>
+                    <li>Enable full trust for the CA under <em>Root Certificate Trust</em>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /row -->
+      </div><!-- /tab-browsers -->
+
+      <!-- ======== WINDOWS ======== -->
+      <div class="tab-pane fade" id="tab-windows">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-windows me-2 text-primary"></i>Windows — System Trust Store</h6>
+        <p class="text-muted small mb-3">Installing at the system level makes all Chromium-based browsers, Edge, and Windows applications trust the CA.</p>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">GUI Method</h6>
+            <ol class="trust-steps">
+              <li>Download <code>ca.crt</code>.</li>
+              <li>Right-click → <strong>Install Certificate</strong>.</li>
+              <li>Select <strong>Local Machine</strong> → Next (requires admin).</li>
+              <li>Choose <strong>Place all certificates in the following store</strong> → <strong>Browse</strong>.</li>
+              <li>Select <strong>Trusted Root Certification Authorities</strong> → OK → Next → Finish.</li>
+            </ol>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">PowerShell (admin)</h6>
+            <pre class="cl-code-block">Import-Certificate `
+  -FilePath "C:\path\to\ca.crt" `
+  -CertStoreLocation Cert:\LocalMachine\Root</pre>
+            <h6 class="fw-semibold small mt-3 mb-2">certutil.exe (admin)</h6>
+            <pre class="cl-code-block">certutil -addstore Root ca.crt</pre>
+          </div>
+          <div class="col-12">
+            <div class="trust-note">
+              <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+              <strong>Firefox on Windows</strong> does not use the Windows certificate store. Install the certificate separately in Firefox — see the Browsers tab.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== macOS ======== -->
+      <div class="tab-pane fade" id="tab-macos">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-apple me-2 text-primary"></i>macOS — Keychain Access</h6>
+        <p class="text-muted small mb-3">Adding to the System keychain trusts the CA for all users and all apps including Safari and Chrome.</p>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">GUI Method</h6>
+            <ol class="trust-steps">
+              <li>Download <code>ca.crt</code> and double-click it.</li>
+              <li>Keychain Access opens — select <strong>System</strong> keychain → Add.</li>
+              <li>Find the certificate in the list and double-click it.</li>
+              <li>Expand <strong>Trust</strong> → set <em>When using this certificate</em> to <strong>Always Trust</strong>.</li>
+              <li>Close the window and enter your password.</li>
+            </ol>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">Terminal</h6>
+            <pre class="cl-code-block"># System-wide (all users)
+sudo security add-trusted-cert \
+  -d -r trustRoot \
+  -k /Library/Keychains/System.keychain \
+  ca.crt
+
+# Current user only
+security add-trusted-cert \
+  -d -r trustRoot \
+  -k ~/Library/Keychains/login.keychain-db \
+  ca.crt</pre>
+          </div>
+          <div class="col-12">
+            <div class="trust-note">
+              <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+              <strong>Firefox on macOS</strong> does not use the system keychain. Install the certificate separately in Firefox — see the Browsers tab.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== LINUX ======== -->
+      <div class="tab-pane fade" id="tab-linux">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-ubuntu me-2 text-primary"></i>Linux — System CA Bundle</h6>
+        <p class="text-muted small mb-3">Installing system-wide makes <code>curl</code>, <code>wget</code>, and most CLI tools trust the CA automatically.</p>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">Debian / Ubuntu</h6>
+            <pre class="cl-code-block">sudo cp ca.crt \
+  /usr/local/share/ca-certificates/internal-ca.crt
+
+sudo update-ca-certificates</pre>
+            <p class="text-muted small mt-2 mb-0">Verify: <code>ls /etc/ssl/certs/ | grep internal</code></p>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">RHEL / CentOS / Fedora / Amazon Linux</h6>
+            <pre class="cl-code-block">sudo cp ca.crt \
+  /etc/pki/ca-trust/source/anchors/internal-ca.crt
+
+sudo update-ca-trust extract</pre>
+            <p class="text-muted small mt-2 mb-0">Verify: <code>trust list | grep "Internal"</code></p>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">Alpine Linux (Docker base image)</h6>
+            <pre class="cl-code-block">apk add --no-cache ca-certificates
+cp ca.crt /usr/local/share/ca-certificates/
+update-ca-certificates</pre>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-semibold small mb-2">Arch Linux</h6>
+            <pre class="cl-code-block">sudo cp ca.crt \
+  /etc/ca-certificates/trust-source/anchors/internal-ca.crt
+
+sudo trust extract-compat</pre>
+          </div>
+          <div class="col-12">
+            <div class="trust-note">
+              <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+              <strong>Chrome on Linux</strong> needs a separate <code>certutil</code> step — see the Browsers tab.
+              <strong>Firefox on Linux</strong> also has its own store — see the Browsers tab.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== DEV TOOLS ======== -->
+      <div class="tab-pane fade" id="tab-tools">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-terminal me-2 text-primary"></i>Developer Tools &amp; Runtimes</h6>
+
+        <div class="row g-4">
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-box me-2 text-info"></i>Docker</h6>
+              <p class="text-muted small mb-2">Inject the CA into images at build time:</p>
+              <pre class="cl-code-block small">FROM your-base-image
+
+# Debian/Ubuntu base
+COPY ca.crt /usr/local/share/ca-certificates/internal-ca.crt
+RUN apt-get update && apt-get install -y ca-certificates \
+    && update-ca-certificates
+
+# Alpine base
+COPY ca.crt /usr/local/share/ca-certificates/
+RUN apk add --no-cache ca-certificates \
+    && update-ca-certificates</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-cloud me-2 text-info"></i>Kubernetes</h6>
+              <p class="text-muted small mb-2">Mount the CA as a ConfigMap or Secret:</p>
+              <pre class="cl-code-block small"># Create ConfigMap from the CA cert
+kubectl create configmap internal-ca \
+  --from-file=ca.crt=ca.crt
+
+# Reference in a pod spec
+volumes:
+  - name: ca-cert
+    configMap:
+      name: internal-ca
+volumeMounts:
+  - name: ca-cert
+    mountPath: /etc/ssl/certs/internal-ca.crt
+    subPath: ca.crt</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-code-slash me-2 text-info"></i>curl &amp; wget</h6>
+              <pre class="cl-code-block small"># Per-request
+curl --cacert /path/to/ca.crt https://your.host/
+
+# System-wide (after installing to OS store)
+curl https://your.host/           # just works
+
+# wget
+wget --ca-certificate=/path/to/ca.crt \
+  https://your.host/</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-filetype-py me-2 text-info"></i>Python</h6>
+              <pre class="cl-code-block small"># requests library
+import requests
+resp = requests.get(
+    "https://your.host/",
+    verify="/path/to/ca.crt"
+)
+
+# Or set env var (affects all requests calls)
+export REQUESTS_CA_BUNDLE=/path/to/ca.crt
+
+# httpx
+import httpx
+client = httpx.Client(verify="/path/to/ca.crt")</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-filetype-js me-2 text-info"></i>Node.js</h6>
+              <pre class="cl-code-block small"># Set env var before starting Node
+export NODE_EXTRA_CA_CERTS=/path/to/ca.crt
+node your-app.js
+
+# Or in code (https module)
+const https = require('https');
+const fs = require('fs');
+const agent = new https.Agent({
+  ca: fs.readFileSync('/path/to/ca.crt')
+});
+
+# fetch (Node 18+)
+import { readFileSync } from 'fs';
+process.env.NODE_EXTRA_CA_CERTS = '/path/to/ca.crt';</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-git me-2 text-info"></i>Git</h6>
+              <pre class="cl-code-block small"># Per-repo
+git config http.sslCAInfo /path/to/ca.crt
+
+# Global (all repos, current user)
+git config --global http.sslCAInfo \
+  /path/to/ca.crt
+
+# Or append to existing bundle
+git config --global http.sslCAInfo \
+  /etc/ssl/certs/ca-certificates.crt</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-filetype-java me-2 text-info"></i>Java / JVM</h6>
+              <pre class="cl-code-block small"># Import into the JVM truststore
+keytool -importcert \
+  -alias "internal-ca" \
+  -file ca.crt \
+  -keystore $JAVA_HOME/lib/security/cacerts \
+  -storepass changeit \
+  -noprompt
+
+# Or pass at runtime
+java -Djavax.net.ssl.trustStore=/path/to/truststore.jks \
+     -jar your-app.jar</pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="trust-tool-card">
+              <h6 class="fw-semibold small mb-2"><i class="bi bi-verify me-2 text-info"></i>OpenSSL / verify</h6>
+              <pre class="cl-code-block small"># Verify a certificate against this CA
+openssl verify -CAfile ca.crt server.crt
+
+# Test a live TLS connection
+openssl s_client \
+  -CAfile ca.crt \
+  -connect your.host:443
+
+# Check cert details
+openssl x509 -in server.crt -noout -text</pre>
+            </div>
+          </div>
+
+        </div><!-- /row -->
+      </div><!-- /tab-tools -->
+
+    </div><!-- /tab-content -->
+
+  </div>
+</div>
+{% endblock %}

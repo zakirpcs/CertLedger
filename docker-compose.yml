@@ -1,0 +1,81 @@
+services:
+
+  # ── 1. Frontend ───────────────────────────────────────────────
+  # nginx reverse proxy: terminates TLS, redirects HTTP→HTTPS,
+  # and forwards all traffic to the backend service.
+  frontend:
+    build: ./frontend
+    container_name: certledger-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx-ssl:/etc/nginx/ssl
+    depends_on:
+      certificate:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+
+  # ── 2. Backend ────────────────────────────────────────────────
+  # FastAPI application: web UI, CA operations, API endpoints.
+  backend:
+    build: ./backend
+    container_name: certledger-backend
+    restart: unless-stopped
+    volumes:
+      - ca-data:/ca-data
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - CA_DATA_DIR=/ca-data
+      - DATABASE_URL=postgresql://certledger:${DB_PASSWORD:-certledger}@database:5432/certledger
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── 3. Database ───────────────────────────────────────────────
+  # PostgreSQL: stores certificate requests, issued certs, and audit trail.
+  database:
+    image: postgres:16-alpine
+    container_name: certledger-database
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=certledger
+      - POSTGRES_USER=certledger
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-certledger}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U certledger -d certledger"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── 4. Certificate ────────────────────────────────────────────
+  # One-shot init container: generates the nginx self-signed TLS
+  # certificate on first run and exits. The cert is stored in the
+  # nginx-ssl volume and reused on subsequent restarts.
+  certificate:
+    build: ./certificate
+    container_name: certledger-certificate
+    restart: "no"
+    volumes:
+      - nginx-ssl:/certs
+
+volumes:
+  ca-data:
+    driver: local
+  db-data:
+    driver: local
+  nginx-ssl:
+    driver: local

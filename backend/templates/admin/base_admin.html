@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin{% endblock %} — CertLedger CA</title>
+  <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/style.css?v={{ static_v }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="admin-body ent-app">
+
+<div class="admin-wrapper">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <i class="bi bi-shield-lock-fill"></i>
+      <span>CertLedger</span>
+    </div>
+    <div class="sidebar-label">CA Administration</div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard" class="sidebar-link {% if active == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+      <a href="/admin/pending" class="sidebar-link {% if active == 'pending' %}active{% endif %}">
+        <i class="bi bi-hourglass-split"></i> Pending Requests
+        {% if pending_count and pending_count > 0 %}
+          <span class="sidebar-badge">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="/admin/certificates" class="sidebar-link {% if active == 'certificates' %}active{% endif %}">
+        <i class="bi bi-journal-text"></i> All Certificates
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="/admin/ca-info" class="sidebar-link {% if active == 'ca_info' %}active{% endif %}">
+        <i class="bi bi-award-fill"></i> CA Information
+      </a>
+      <a href="/admin/crl.pem" class="sidebar-link" download="crl.pem">
+        <i class="bi bi-file-earmark-x"></i> Download CRL
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="/" class="sidebar-link">
+        <i class="bi bi-house"></i> User Portal
+      </a>
+      <a href="/admin/logout" class="sidebar-link text-danger">
+        <i class="bi bi-box-arrow-right"></i> Sign Out
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-link sidebar-toggle d-lg-none p-0" id="sidebarToggle">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="/admin/dashboard">Admin</a></li>
+            {% block breadcrumb %}{% endblock %}
+          </ol>
+        </nav>
+      </div>
+      <span class="text-muted small"><i class="bi bi-shield-check text-success me-1"></i>CA Admin</span>
+    </div>
+
+    <div class="admin-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="clToastStack" class="cl-toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+<!-- Alert modal -->
+<div id="clAlertOverlay" class="cl-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="clAlertTitle">
+  <div class="cl-alert-box" id="clAlertBox">
+    <div class="cl-alert-stripe" id="clAlertStripe"></div>
+    <div class="cl-alert-inner">
+      <div class="cl-alert-icon-wrap" id="clAlertIconWrap"><i class="bi" id="clAlertIcon"></i></div>
+      <div class="cl-alert-body">
+        <div class="cl-alert-title" id="clAlertTitle"></div>
+        <div class="cl-alert-msg"   id="clAlertMsg"></div>
+      </div>
+    </div>
+    <div class="cl-alert-footer">
+      <button class="cl-alert-btn" id="clAlertClose">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="clConfirmOverlay" class="cl-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="clConfirmTitle">
+  <div class="cl-alert-box" id="clConfirmBox">
+    <div class="cl-alert-stripe" id="clConfirmStripe"></div>
+    <div class="cl-alert-inner">
+      <div class="cl-alert-icon-wrap" id="clConfirmIconWrap"><i class="bi" id="clConfirmIcon"></i></div>
+      <div class="cl-alert-body">
+        <div class="cl-alert-title" id="clConfirmTitle"></div>
+        <div class="cl-alert-msg"   id="clConfirmMsg"></div>
+      </div>
+    </div>
+    <div class="cl-alert-footer" style="gap:10px">
+      <button class="cl-confirm-cancel" id="clConfirmCancel">Cancel</button>
+      <button class="cl-alert-btn"      id="clConfirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/vendor/bootstrap.bundle.min.js"></script>
+<script src="/static/js/main.js?v={{ static_v }}"></script>
+<script>
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    document.querySelector('.admin-sidebar').classList.toggle('show');
+  });
+
+  // Wire data-confirm-msg buttons: intercept click, show confirm modal, submit form on OK
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-confirm-msg]');
+    if (!btn) return;
+    e.preventDefault();
+    const form = btn.closest('form');
+    showCLConfirm(
+      btn.dataset.confirmMsg,
+      btn.dataset.confirmType || 'warning',
+      () => form && form.submit()
+    );
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
