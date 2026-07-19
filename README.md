@@ -132,3 +132,9 @@ Static assets are cache-busted automatically via a `static_v` token (computed fr
 - Admin access is gated by `ADMIN_PASSWORD`; sessions are signed with `SECRET_KEY`.
 - The CA private key and issued-certificate data live in the `ca-data` Docker volume — back it up and protect it accordingly.
 - Deleting a revoked certificate removes its serial from the CRL, which is why deletion is blocked until the certificate has expired.
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE).
