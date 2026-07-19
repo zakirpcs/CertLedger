@@ -1,5 +1,12 @@
 # CertLedger
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white)
+
 An internal **Certificate Authority (CA)** web application for issuing and managing TLS/SSL certificates for your organization. Users submit Certificate Signing Requests (CSRs) through a self-service portal; an administrator reviews, signs, revokes, and manages them from an enterprise-styled admin panel.
 
 Built with **FastAPI + PostgreSQL + Bootstrap 5**, deployed as a 4-service Docker Compose stack behind an nginx TLS reverse proxy.
