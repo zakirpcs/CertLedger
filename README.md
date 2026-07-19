@@ -27,6 +27,20 @@ Built with **FastAPI + PostgreSQL + Bootstrap 5**, deployed as a 4-service Docke
 
 ---
 
+## Screenshots
+
+| User Portal | Admin Dashboard |
+|:---:|:---:|
+| ![Home](docs/screenshots/home.png) | ![Dashboard](docs/screenshots/dashboard.png) |
+| **All Certificates** | **CA Information** |
+| ![All Certificates](docs/screenshots/certificates.png) | ![CA Information](docs/screenshots/ca-info.png) |
+
+**Trust Store installation guide**
+
+![Trust Store](docs/screenshots/trust-store.png)
+
+---
+
 ## Architecture
 
 The stack runs as four Docker services:
